@@ -22,7 +22,7 @@ class Pdftotxt_extract(object):
     def f1(self, foo): 
         return foo.splitlines()
     
-    def findOccurrences(s, ch):
+    def findOccurrences(self, s, ch):
         return [i for i, letter in enumerate(s) if letter == ch]
 
     def check(self, a1, b1, f=0):
@@ -77,15 +77,40 @@ class Pdftotxt_extract(object):
         #             all_lines.append(line)
         #     else:
         #         all_lines.append(line)
-        # #print_str="".join(str(x) for x in all_lines)
-        # #print(#print_str)
+        # ##print_str="".join(str(x) for x in all_lines)
+        # ##print(##print_str)
+        maxlnline=0
+        for line_i, line in enumerate(output, 1):
+            maxlnline=max(maxlnline, len(line))
         w_spce={}
         for line_i, line in enumerate(output, 1):
             line+='\n'
-            for i in findOccurrences(line, " "):
-                if i not in w_spce:
-                    w_spce[i]=0
-                w_spce[i]+=1
+            # if self.pgno==5 and line_i>=4 and line_i<=5:
+            #     print('newline starts\n')
+            # prat=""
+            # if self.pgno==5 and line_i==6:
+            #     for i in line:
+            #         prat+=i
+            #     print(prat)    
+            if self.pgno==5 and len(line)>=70 and line[69]!=" ":
+                print(line)
+            for i in self.findOccurrences(line, " "):
+                # if line[i:i+5]=="which" and self.pgno==5 and line_i==9:
+                #     print(i+6)
+                # if self.pgno==5 and line_i>=4 and line_i<=5:
+                #     print(i," ")
+                if i>=40 and i<len(line)-1 and line[i+1]==" ":
+                    if i not in w_spce:
+                        w_spce[i]=0
+                    w_spce[i]+=1
+            for i in range(len(line), maxlnline):
+                    if i>=40 and i not in w_spce:
+                        w_spce[i]=0
+                    if i>=40 :
+                        w_spce[i]+=1
+
+            # if self.pgno==5 and line_i>=4 and line_i<=5:
+            #     print('newline ends\n')
             total_lines+=1
             line = re.sub(r':','',line)
             f=0
@@ -104,17 +129,17 @@ class Pdftotxt_extract(object):
 
             starts_str=" ".join(str(x) for x in starts)
             # if self.pgno==9:
-            #     #print(self.pgno, " ".join(str(x) for x in starts))                
+            #     ##print(self.pgno, " ".join(str(x) for x in starts))                
             indiv=1
             # if self.pgno==20:
-            #     #print(line, starts, "endofline")
+            #     ##print(line, starts, "endofline")
             if len(starts)>0:
                 for key in counter:
                     if starts_str in key:
                         counter[key]+=1
                         temp_key=key.split(" ")
                         # if self.pgno==20:
-                        #     #print(line, ";", temp_key,";", starts, int(temp_key[0])==starts[0])
+                        #     ##print(line, ";", temp_key,";", starts, int(temp_key[0])==starts[0])
                         if int(temp_key[0])==starts[0]:
                             actual_counter[key]+=1
                         indiv=0
@@ -128,7 +153,7 @@ class Pdftotxt_extract(object):
             if ends:
             	maxx=max(maxx, max(ends))
             if len(starts)<1:
-            	###print(line)
+            	####print(line)
             	lines_removed.append([line_i, str_curr])
             	lines_removed_inds.append(line_i)
             	continue
@@ -138,7 +163,7 @@ class Pdftotxt_extract(object):
             	lines_for_tables.append([copy.deepcopy(starts), line, copy.deepcopy(ends), line_i])       	
 
             if not re.search(r'\S\s+\S', line):
-            	###print(line)
+            	####print(line)
                 pass
             if len(starts)==1 and starts[0]>60:
              	one_lines.append([starts[0], line_i, str_curr])       
@@ -155,13 +180,19 @@ class Pdftotxt_extract(object):
             		str1=str1.ljust(padsize1)
             		str2=str2.ljust(padsize2)
             		# if not re.search(r'\S', str1[s:e+1]) and not re.search(r'\S', str2[s:e+1]) :
-            		# 	###print(line)
+            		# 	####print(line)
             	prev_lines[-2]=prev_lines[-1]
             	prev_lines[-1]=line
-        if counter :
-            Keymax = max(counter, key=counter.get)
-            if counter[Keymax]>total_lines/4:# and actual_counter[Keymax]>total_lines/6:
-                #print(self.pgno, Keymax,":;k'", actual_counter[Keymax], counter[Keymax], total_lines)# counter[Keymax], total_lines)       
+        if w_spce:
+            Keymax = max(w_spce, key=w_spce.get)
+            if w_spce[Keymax]==total_lines:
+                print(self.pgno,  Keymax , w_spce[Keymax], total_lines, maxlnline)
+            # if self.pgno==5  :# w_spce[Keymax]>=total_lines-10 :
+            #     print(self.pgno, Keymax)
+        # if counter :
+        #     Keymax = max(counter, key=counter.get)
+        #     if counter[Keymax]>total_lines/4:# and actual_counter[Keymax]>total_lines/6:
+        #         ##print(self.pgno, Keymax,":;k'", actual_counter[Keymax], counter[Keymax], total_lines)# counter[Keymax], total_lines)       
         i=0  
         while i<len(one_lines):
           	j=i
@@ -178,8 +209,8 @@ class Pdftotxt_extract(object):
         	if len(lines_for_tables[i][0])==1:
         		i+=1
         		continue
-        	print('--------------------------------------------------------------------------')
-        	print("table starts")
+        	#print('--------------------------------------------------------------------------')
+        	#print("table starts")
         	f=0
         	while j<len(lines_for_tables) and (self.check(lines_for_tables[j][0], lines_for_tables[i][0]) or\
              self.check(lines_for_tables[i][0], lines_for_tables[j][0]) or self.check(lines_for_tables[j][0], lines_for_tables[j-1][0]) or \
@@ -188,7 +219,7 @@ class Pdftotxt_extract(object):
         		if len(lines_for_tables[j][0])==1 and lines_for_tables[j][0][0]<=10 and lines_for_tables[j][2][0]-lines_for_tables[j][0][0]>=0.6*maxx:
         			f=1
         			break
-        		print(lines_for_tables[j][1])
+        		#print(lines_for_tables[j][1])
         		j+=1;lines_removed.append(lines_for_tables[j-1][3])
         	if j==i+1 and f==0:
         		i1=i
@@ -197,21 +228,21 @@ class Pdftotxt_extract(object):
                or self.check(lines_for_tables[j][0], lines_for_tables[j-2][0]) or self.check(lines_for_tables[j-2][0], lines_for_tables[j][0])) :
         		if len(lines_for_tables[j][0])==1 and lines_for_tables[j][0][0]<=10 and lines_for_tables[j][2][0]-lines_for_tables[j][0][0]>=0.6*maxx:
         			break
-        		print(lines_for_tables[j][1])
+        		#print(lines_for_tables[j][1])
         		j+=1;lines_removed.append(lines_for_tables[j-1][3])
-        	print('--------------------------------------------------------------------------')
-        	print("table ends")#j<len(lines_for_tables) and self.check(lines_for_tables[j][0], lines_for_tables[i][0]) )
+        	#print('--------------------------------------------------------------------------')
+        	#print("table ends")#j<len(lines_for_tables) and self.check(lines_for_tables[j][0], lines_for_tables[i][0]) )
         	i=j
-        # print("removed lines")
+        # #print("removed lines")
         # for line in lines_removed:
-           # print(line)
-  #print("removed lines")
+           # #print(line)
+  ##print("removed lines")
  
-        # print("final lines")
+        # #print("final lines")
         # for line_i, line in enumerate(output, 1):
         #     if line_i not in lines_removed or 1:
         #         starts=[m.start(0) for m in re.finditer(r'(?<=(\s\s))\S', line)]
-        #         print(starts, line)
+        #         #print(starts, line)
     def extract_text(self):
         final_output=[]
         for page in range(1,self.no_pages+1):
@@ -222,6 +253,6 @@ class Pdftotxt_extract(object):
         return final_output
 
 if __name__ == '__main__':
-    pdf='Banking Regulations.pdf'
+    pdf='HDFC Arbitrage Fund.pdf'
     pdftotxt_extract=Pdftotxt_extract(pdf)
     print(pdftotxt_extract.extract_text())
