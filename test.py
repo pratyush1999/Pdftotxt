@@ -83,34 +83,52 @@ class Pdftotxt_extract(object):
         for line_i, line in enumerate(output, 1):
             maxlnline=max(maxlnline, len(line))
         w_spce={}
+        left_w_spce={}
+        right_w_spce={}
         for line_i, line in enumerate(output, 1):
             line+='\n'
-            # if self.pgno==5 and line_i>=4 and line_i<=5:
-            #     print('newline starts\n')
-            # prat=""
-            # if self.pgno==5 and line_i==6:
+            # if self.pgno==1 and line[58]!=" ":
+            #     print(line[:58], line_i)
+            # if self.pgno==32 and line_i==6:
             #     for i in line:
             #         prat+=i
-            #     print(prat)    
-            if self.pgno==5 and len(line)>=70 and line[69]!=" ":
-                print(line)
-            for i in self.findOccurrences(line, " "):
+            #     print(line[40])
+                
+            for  i, letter in enumerate(line):
+                if letter!=" ":
+                    continue
                 # if line[i:i+5]=="which" and self.pgno==5 and line_i==9:
                 #     print(i+6)
                 # if self.pgno==5 and line_i>=4 and line_i<=5:
                 #     print(i," ")
-                if i>=40 and i<len(line)-1 and line[i+1]==" ":
+                if i>=10 and i<len(line)-10 and line[i+1]==" ":
+                    # if self.pgno==32 and line_i==6:
+                    #     print(line, i)
+                    nofwords=len(re.findall(r'\S(?=(\s))', line[:i]))
+                    if i not in left_w_spce:
+                        left_w_spce[i]=0
+                    left_w_spce[i]+=nofwords
+                  
+                    nofwords=len(re.findall(r'\S(?=(\s))', line[i:]))
+                    if i not in right_w_spce:
+                        right_w_spce[i]=0
+                    right_w_spce[i]+=nofwords
+
                     if i not in w_spce:
                         w_spce[i]=0
                     w_spce[i]+=1
-            for i in range(len(line), maxlnline):
-                    if i>=40 and i not in w_spce:
-                        w_spce[i]=0
-                    if i>=40 :
-                        w_spce[i]+=1
+            for i in range(len(line), maxlnline-10):
 
-            # if self.pgno==5 and line_i>=4 and line_i<=5:
-            #     print('newline ends\n')
+                if i>=10 and i not in w_spce:
+                    w_spce[i]=0
+                if i not in left_w_spce:
+                    left_w_spce[i]=0
+                if i not in right_w_spce:
+                    right_w_spce[i]=0
+                if i>=10:
+                    w_spce[i]+=1
+            # if self.pgno==50 and w_spce[60]>w_spce_temp:
+            #     print(line)
             total_lines+=1
             line = re.sub(r':','',line)
             f=0
@@ -128,28 +146,6 @@ class Pdftotxt_extract(object):
                 del ends[0]
 
             starts_str=" ".join(str(x) for x in starts)
-            # if self.pgno==9:
-            #     ##print(self.pgno, " ".join(str(x) for x in starts))                
-            indiv=1
-            # if self.pgno==20:
-            #     ##print(line, starts, "endofline")
-            if len(starts)>0:
-                for key in counter:
-                    if starts_str in key:
-                        counter[key]+=1
-                        temp_key=key.split(" ")
-                        # if self.pgno==20:
-                        #     ##print(line, ";", temp_key,";", starts, int(temp_key[0])==starts[0])
-                        if int(temp_key[0])==starts[0]:
-                            actual_counter[key]+=1
-                        indiv=0
-            if indiv==1 and len(starts)>1:
-                if starts_str in counter:
-                    counter[starts_str]+=1
-                    actual_counter[starts_str]+=1
-                else:
-                    counter[starts_str]=1
-                    actual_counter[starts_str]=1
             if ends:
             	maxx=max(maxx, max(ends))
             if len(starts)<1:
@@ -162,9 +158,6 @@ class Pdftotxt_extract(object):
             else:
             	lines_for_tables.append([copy.deepcopy(starts), line, copy.deepcopy(ends), line_i])       	
 
-            if not re.search(r'\S\s+\S', line):
-            	####print(line)
-                pass
             if len(starts)==1 and starts[0]>60:
              	one_lines.append([starts[0], line_i, str_curr])       
             prev_end=ends
@@ -185,14 +178,28 @@ class Pdftotxt_extract(object):
             	prev_lines[-1]=line
         if w_spce:
             Keymax = max(w_spce, key=w_spce.get)
-            if w_spce[Keymax]==total_lines:
-                print(self.pgno,  Keymax , w_spce[Keymax], total_lines, maxlnline)
-            # if self.pgno==5  :# w_spce[Keymax]>=total_lines-10 :
-            #     print(self.pgno, Keymax)
-        # if counter :
-        #     Keymax = max(counter, key=counter.get)
-        #     if counter[Keymax]>total_lines/4:# and actual_counter[Keymax]>total_lines/6:
-        #         ##print(self.pgno, Keymax,":;k'", actual_counter[Keymax], counter[Keymax], total_lines)# counter[Keymax], total_lines)       
+            # if self.pgno==32:
+            #     print(w_spce[70], w_spce[Keymax], right_w_spce[70], left_w_spce[70])
+            #     print(w_spce[40], w_spce[Keymax], right_w_spce[40], left_w_spce[40])
+            if abs(Keymax-int(maxlnline/2))<=10 \
+             and right_w_spce[Keymax]>10 and left_w_spce[Keymax]>10:
+                print("type 1:",self.pgno,"col key:", Keymax, "max length of line in page:",\
+                    maxlnline, "w_spce of key:",w_spce[Keymax], "right_w_spce:", right_w_spce[Keymax],\
+                    "left_w_spce:", left_w_spce[Keymax],"total_lines :", total_lines,
+                  "diff bw w_spce and total_lines/total_lines:",100* abs(w_spce[Keymax]-total_lines)/total_lines  )
+                return Keymax
+            elif right_w_spce[Keymax]>=10 and left_w_spce[Keymax]>=10:
+                for key, val in w_spce.items():
+                    if val>=w_spce[Keymax]-15 and abs(key-int(maxlnline/2))<=10\
+                    and abs(right_w_spce[key]-left_w_spce[key])<=max(right_w_spce[key], left_w_spce[key])/4\
+                    and right_w_spce[key]>10 and left_w_spce[key]>10:
+                        print("type 2:",self.pgno,"white space col key:", key, "max length of line in page:",\
+                        maxlnline, "w_spce of key:",w_spce[key], "right_w_spce:", right_w_spce[key],\
+                        "left_w_spce:", left_w_spce[key],"total_lines :" , total_lines, "right_w_spce of keymax:", right_w_spce[Keymax],\
+                    "left_w_spce of keymax:", left_w_spce[Keymax],
+                  "diff bw w_spce and total_lines/total_lines:",100* abs(w_spce[Keymax]-total_lines)/total_lines)
+                        return key
+                        break
         i=0  
         while i<len(one_lines):
           	j=i
@@ -253,6 +260,7 @@ class Pdftotxt_extract(object):
         return final_output
 
 if __name__ == '__main__':
-    pdf='HDFC Arbitrage Fund.pdf'
+    pdf='Wealth Management- Relevant Documents/Industry Reports/Wealth-Management-in-India-Challenges-and-Strategies.pdf'
+    #pdf='HDFC Arbitrage Fund.pdf'
     pdftotxt_extract=Pdftotxt_extract(pdf)
     print(pdftotxt_extract.extract_text())
