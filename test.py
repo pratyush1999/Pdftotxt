@@ -117,16 +117,17 @@ class Pdftotxt_extract(object):
                     if i not in w_spce:
                         w_spce[i]=0
                     w_spce[i]+=1
-            for i in range(len(line), maxlnline-10):
-
+            for i in range(len(line)-10, maxlnline-10):
                 if i>=10 and i not in w_spce:
                     w_spce[i]=0
                 if i not in left_w_spce:
                     left_w_spce[i]=0
+
                 if i not in right_w_spce:
                     right_w_spce[i]=0
                 if i>=10:
                     w_spce[i]+=1
+                    left_w_spce[i]+=len(re.findall(r'\S(?=(\s))', line[:i]))
             # if self.pgno==50 and w_spce[60]>w_spce_temp:
             #     print(line)
             total_lines+=1
@@ -179,43 +180,82 @@ class Pdftotxt_extract(object):
         # if self.pgno==5:
         #     print(w_spce,maxlnline, max(w_spce, key=w_spce.get), w_spce[max(w_spce, key=w_spce.get)])
         #     print(right_w_spce[62], left_w_spce[62])
-        if w_spce:
+        split_wspce=1000
+        # if one_w_spce:
+        #     one_Keymax = max(one_w_spce, key=one_w_spce.get)
+        #     if one_w_spce[one_Keymax]>=total_lines-5:
+        #         split_wspce=one_Keymax
+        if w_spce :
              Keymax = max(w_spce, key=w_spce.get)
-             sorted(w_spce.items(), key=lambda x: x[1])
+             sorted(w_spce.items(), key=lambda x: x[1], reverse=True)
              # if self.pgno==7:
              #    outta=[]
              #    for key, val in w_spce.items():
              #        if val==w_spce[Keymax]:
              #            outta.append(key)
              #    print("list of max keys:", *outta)
-             if abs(Keymax-int(maxlnline/2))<=int(maxlnline/5) \
+             if  abs(Keymax-int(maxlnline/2))<=20 \
+                     and(\
+                      min(right_w_spce[Keymax],left_w_spce[Keymax])>=3*max(right_w_spce[Keymax], left_w_spce[Keymax])/4\
+                      or left_w_spce[Keymax]>=100)\
               and right_w_spce[Keymax]>10 and left_w_spce[Keymax]>10:
-                 print("type 1:",self.pgno,"col key:", Keymax, "max length of line in page:",\
-                     maxlnline, "w_spce of key:",w_spce[Keymax], "right_w_spce:", right_w_spce[Keymax],\
-                     "left_w_spce:", left_w_spce[Keymax],"total_lines :", total_lines,
-               "diff bw w_spce and total_lines/total_lines:",100* abs(w_spce[Keymax]-total_lines)/total_lines  )
+               #   print("type 1:",self.pgno,"col key:", Keymax, "max length of line in page:",\
+               #       maxlnline, "w_spce of key:",w_spce[Keymax], "right_w_spce:", right_w_spce[Keymax],\
+               #       "left_w_spce:", left_w_spce[Keymax],"total_lines :", total_lines,
+               # "diff bw w_spce and total_lines/total_lines:",100* abs(w_spce[Keymax]-total_lines)/total_lines  )
+                 split_wspce=Keymax
              else:#if right_w_spce[Keymax]>=10 and left_w_spce[Keymax]>=10:
-                 for key, val in w_spce.items():
+                 dict_list=[]
+                 for key, val in w_spce.items(): 
+                    dict_list.append([key, val])
+                 dict_list=sorted(dict_list, key=lambda x: x[1], reverse=True)
+                 for key, val in dict_list:
                      if val>=w_spce[Keymax]-5 and abs(key-int(maxlnline/2))<=int(maxlnline/5)\
+                     and(\
+                      left_w_spce[key]>=3*max(right_w_spce[key], left_w_spce[key])/4\
+                      or left_w_spce[key]>=100)\
                      and right_w_spce[key]>10 and left_w_spce[key]>10:
-                         print("type 2:",self.pgno,"white space col key:", key, "max length of line in page:",\
-                         maxlnline, "w_spce of key:",w_spce[key], "right_w_spce:", right_w_spce[key],\
-                         "left_w_spce:", left_w_spce[key],"total_lines :" , total_lines, "right_w_spce of keymax:", right_w_spce[Keymax],\
-                     "left_w_spce of keymax:", left_w_spce[Keymax],
-                   "diff bw w_spce and total_lines/total_lines:",100* abs(w_spce[Keymax]-total_lines)/total_lines)
+                         split_wspce=key
+                   #       print("type 2:",self.pgno,"white space col key:", key, "max length of line in page:",\
+                   #       maxlnline, "w_spce of key:",w_spce[key], "right_w_spce:", right_w_spce[key],\
+                   #       "left_w_spce:", left_w_spce[key],"total_lines :" , total_lines, "right_w_spce of keymax:", right_w_spce[Keymax],\
+                   #   "left_w_spce of keymax:", left_w_spce[Keymax],
+                   # "diff bw w_spce and total_lines/total_lines:",100* abs(w_spce[Keymax]-total_lines)/total_lines)
                          break
                      elif val>=w_spce[Keymax]-15 and abs(key-int(maxlnline/2))<=int(maxlnline/5)\
                      and(\
-                      abs(right_w_spce[key]-left_w_spce[key])<=max(right_w_spce[key], left_w_spce[key])/4\
-                      or right_w_spce[key]>=100)\
+                       left_w_spce[key]>=3*max(right_w_spce[key], left_w_spce[key])/4\
+                      or left_w_spce[key]>=100)\
                      and right_w_spce[key]>10 and left_w_spce[key]>10:
-                         print("type 2:",self.pgno,"white space col key:", key, "max length of line in page:",\
-                         maxlnline, "w_spce of key:",w_spce[key], "right_w_spce:", right_w_spce[key],\
-                         "left_w_spce:", left_w_spce[key],"total_lines :" , total_lines, "right_w_spce of keymax:", right_w_spce[Keymax],\
-                     "left_w_spce of keymax:", left_w_spce[Keymax],
-                   "diff bw w_spce and total_lines/total_lines:",100* abs(w_spce[Keymax]-total_lines)/total_lines)
+                         split_wspce=key
+                   #       print("type 2:",self.pgno,"white space col key:", key, "max length of line in page:",\
+                   #       maxlnline, "w_spce of key:",w_spce[key], "right_w_spce:", right_w_spce[key],\
+                   #       "left_w_spce:", left_w_spce[key],"total_lines :" , total_lines, "right_w_spce of keymax:", right_w_spce[Keymax],\
+                   #   "left_w_spce of keymax:", left_w_spce[Keymax],
+                   # "diff bw w_spce and total_lines/total_lines:",100* abs(w_spce[Keymax]-total_lines)/total_lines)
                          break
-                          
+        first_column=""
+        second_column=""
+        for line_i, line in enumerate(output, 1):
+            # if self.pgno==10 and line_i==5:
+            #     print("this line:::", split_wspce, line[:split_wspce], w_spce[52], total_lines)
+            if split_wspce<len(line)-1 and line[split_wspce]==' ' and line[split_wspce+1]==' ':
+                first_column+=line[:split_wspce]
+                first_column+='\n'
+                second_column+=line[split_wspce:]
+                if line[-1]!='\n':
+                    second_column+='\n'
+            else:
+                first_column+=line
+                if len(line)==0 or line[-1]!='\n':
+                    first_column+='\n'
+
+        print("pg starts:",self.pgno)
+        print('------------------------------------------------------------------------------------------')
+        print(first_column)
+        print('------------------------------------------------------------------------------------------')
+        print(second_column)                  
+        print("pg ends:",self.pgno)
         i=0  
         while i<len(one_lines):
           	j=i
@@ -276,8 +316,8 @@ class Pdftotxt_extract(object):
         return final_output
 
 if __name__ == '__main__':
-    pdf=\
-    'Wealth Management- Relevant Documents/Industry Reports/pwc-asset-management-2020-a-brave-new-world-final.pdf'
-    #pdf='HDFC Arbitrage Fund.pdf'
+    #pdf=\
+    #'Wealth Management- Relevant Documents/Industry Reports/pwc-asset-management-2020-a-brave-new-world-final.pdf'
+    pdf='/home/pratyush1999/Documents/btp/Wealth Management- Relevant Documents/Industry Reports/Deloitte Investment Management Outlook.pdf'
     pdftotxt_extract=Pdftotxt_extract(pdf)
     print(pdftotxt_extract.extract_text())
