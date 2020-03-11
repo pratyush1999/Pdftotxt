@@ -37,6 +37,134 @@ class Pdftotxt_extract(object):
     	    	return False
     	return True
     #at the last remove those lines whose previous and next lines have been removed
+    def break_into_pages(self, output):
+            # loop through each line in corpus
+        prev_start=[]
+        prev_end=[]
+        prev_lines=[]
+        one_lines=[]
+        lines_removed=[]
+        lines_removed_inds=[]
+        lines_for_tables=[]
+        maxx=0
+        counter={}
+        actual_counter={}
+        total_lines=0
+        maxlnline=0
+        for line_i, line in enumerate(output, 1):
+            maxlnline=max(maxlnline, len(line))
+        w_spce={}
+        left_w_spce={}
+        right_w_spce={}
+        for line_i, line in enumerate(output, 1):
+            line+='\n'
+            for  i, letter in enumerate(line):
+                if letter!=" ":
+                    continue
+                if i>=10 and i<len(line)-10 and line[i+1]==" ":
+                    nofwords=len(re.findall(r'\S(?=(\s))', line[:i]))
+                    if i not in left_w_spce:
+                        left_w_spce[i]=0
+                    left_w_spce[i]+=nofwords
+                  
+                    nofwords=len(re.findall(r'\S(?=(\s))', line[i:]))
+                    if i not in right_w_spce:
+                        right_w_spce[i]=0
+                    right_w_spce[i]+=nofwords
+
+                    if i not in w_spce:
+                        w_spce[i]=0
+                    w_spce[i]+=1
+            for i in range(len(line)-10, maxlnline-10):
+                if i>=10 and i not in w_spce:
+                    w_spce[i]=0
+                if i not in left_w_spce:
+                    left_w_spce[i]=0
+
+                if i not in right_w_spce:
+                    right_w_spce[i]=0
+                if i>=10:
+                    w_spce[i]+=1
+                    left_w_spce[i]+=len(re.findall(r'\S(?=(\s))', line[:i]))
+            total_lines+=1
+            line = re.sub(r':','',line)
+            f=0
+            prev_temp_line=copy.deepcopy(line)
+            line=re.sub(r'^\s*[\(]?\w+[\.\)](?=\s)','', line) #for removing line numbers. 
+            if prev_temp_line!=line:
+                f=5                                                    #if this creates problems, include a flag in self.check function to take 3 more characters if this pattern comes in the current line
+            str_curr=''.join(line)
+            starts=[m.start(0) for m in re.finditer(r'(?<=(\s\s))\S', line)]
+            ends=[m.start(0) for m in re.finditer(r'\S(?=((\s\s)|\n))', line)]
+            if re.search(r'\S', line[0:2]):
+                starts.insert(0,0) 
+            if  starts and ends and  ends[0]-starts[0]<=2:
+                del starts[0]
+                del ends[0]
+
+            starts_str=" ".join(str(x) for x in starts)
+            if ends:
+              maxx=max(maxx, max(ends))
+            if len(starts)<1:
+              lines_removed.append([line_i, str_curr])
+              lines_removed_inds.append(line_i)
+              continue
+            if len(starts)==1 and ends[0]-starts[0]<=2:
+              pass
+            else:
+              lines_for_tables.append([copy.deepcopy(starts), line, copy.deepcopy(ends), line_i])         
+        split_wspce=1000
+        if w_spce :
+             Keymax = max(w_spce, key=w_spce.get)
+             sorted(w_spce.items(), key=lambda x: x[1], reverse=True)
+             if  abs(Keymax-int(maxlnline/2))<=20 \
+                     and(\
+                      min(right_w_spce[Keymax],left_w_spce[Keymax])>=3*max(right_w_spce[Keymax], left_w_spce[Keymax])/4\
+                      or left_w_spce[Keymax]>=100)\
+              and right_w_spce[Keymax]>10 and left_w_spce[Keymax]>10:
+                 split_wspce=Keymax
+             else:
+                 dict_list=[]
+                 for key, val in w_spce.items(): 
+                    dict_list.append([key, val])
+                 dict_list=sorted(dict_list, key=lambda x: x[1], reverse=True)
+                 for key, val in dict_list:
+                     if val>=w_spce[Keymax]-5 and abs(key-int(maxlnline/2))<=int(maxlnline/5)\
+                     and(\
+                      left_w_spce[key]>=3*max(right_w_spce[key], left_w_spce[key])/4\
+                      or left_w_spce[key]>=100)\
+                     and right_w_spce[key]>10 and left_w_spce[key]>10:
+                         split_wspce=key
+                         break
+                     elif val>=w_spce[Keymax]-15 and abs(key-int(maxlnline/2))<=int(maxlnline/5)\
+                     and(\
+                       left_w_spce[key]>=3*max(right_w_spce[key], left_w_spce[key])/4\
+                      or left_w_spce[key]>=100)\
+                     and right_w_spce[key]>10 and left_w_spce[key]>10:
+                         split_wspce=key
+                         break
+        first_column=""
+        second_column=""
+        for line_i, line in enumerate(output, 1):
+            if split_wspce<len(line)-1 and line[split_wspce]==' ' and line[split_wspce+1]==' ':
+                first_column+=line[:split_wspce]
+                first_column+='\n'
+                second_column+=line[split_wspce:]
+                if line[-1]!='\n':
+                    second_column+='\n'
+            else:
+                first_column+=line
+                if len(line)==0 or line[-1]!='\n':
+                    first_column+='\n'
+
+        # print("pg starts:",self.pgno)
+        # print('------------------------------------------------------------------------------------------')
+        # print(first_column)
+        # print('------------------------------------------------------------------------------------------')
+        # print(second_column)                  
+        # print("pg ends:",self.pgno)
+        return first_column, second_column
+
     def main(self, output):
             # loop through each line in corpus
         prev_start=[]
@@ -163,20 +291,6 @@ class Pdftotxt_extract(object):
              	one_lines.append([starts[0], line_i, str_curr])       
             prev_end=ends
             prev_start=starts
-            if len(prev_lines)<2:
-            	prev_lines.append(line)
-            else:
-            	str1=''.join(prev_lines[-1])
-            	str2=''.join(prev_lines[-2])
-            	for (s, e) in zip(starts, ends):
-            		padsize1=max(len(str1), e)
-            		padsize2=max(len(str2), e)
-            		str1=str1.ljust(padsize1)
-            		str2=str2.ljust(padsize2)
-            		# if not re.search(r'\S', str1[s:e+1]) and not re.search(r'\S', str2[s:e+1]) :
-            		# 	####print(line)
-            	prev_lines[-2]=prev_lines[-1]
-            	prev_lines[-1]=line
         # if self.pgno==5:
         #     print(w_spce,maxlnline, max(w_spce, key=w_spce.get), w_spce[max(w_spce, key=w_spce.get)])
         #     print(right_w_spce[62], left_w_spce[62])
@@ -234,28 +348,28 @@ class Pdftotxt_extract(object):
                    #   "left_w_spce of keymax:", left_w_spce[Keymax],
                    # "diff bw w_spce and total_lines/total_lines:",100* abs(w_spce[Keymax]-total_lines)/total_lines)
                          break
-        first_column=""
-        second_column=""
-        for line_i, line in enumerate(output, 1):
-            # if self.pgno==10 and line_i==5:
-            #     print("this line:::", split_wspce, line[:split_wspce], w_spce[52], total_lines)
-            if split_wspce<len(line)-1 and line[split_wspce]==' ' and line[split_wspce+1]==' ':
-                first_column+=line[:split_wspce]
-                first_column+='\n'
-                second_column+=line[split_wspce:]
-                if line[-1]!='\n':
-                    second_column+='\n'
-            else:
-                first_column+=line
-                if len(line)==0 or line[-1]!='\n':
-                    first_column+='\n'
+        # first_column=""
+        # second_column=""
+        # for line_i, line in enumerate(output, 1):
+        #     # if self.pgno==10 and line_i==5:
+        #     #     print("this line:::", split_wspce, line[:split_wspce], w_spce[52], total_lines)
+        #     if split_wspce<len(line)-1 and line[split_wspce]==' ' and line[split_wspce+1]==' ':
+        #         first_column+=line[:split_wspce]
+        #         first_column+='\n'
+        #         second_column+=line[split_wspce:]
+        #         if line[-1]!='\n':
+        #             second_column+='\n'
+        #     else:
+        #         first_column+=line
+        #         if len(line)==0 or line[-1]!='\n':
+        #             first_column+='\n'
 
-        print("pg starts:",self.pgno)
-        print('------------------------------------------------------------------------------------------')
-        print(first_column)
-        print('------------------------------------------------------------------------------------------')
-        print(second_column)                  
-        print("pg ends:",self.pgno)
+        # print("pg starts:",self.pgno)
+        # print('------------------------------------------------------------------------------------------')
+        # print(first_column)
+        # print('------------------------------------------------------------------------------------------')
+        # print(second_column)                  
+        # print("pg ends:",self.pgno)
         i=0  
         while i<len(one_lines):
           	j=i
@@ -301,23 +415,28 @@ class Pdftotxt_extract(object):
            # #print(line)
   ##print("removed lines")
  
-        # #print("final lines")
-        # for line_i, line in enumerate(output, 1):
-        #     if line_i not in lines_removed or 1:
-        #         starts=[m.start(0) for m in re.finditer(r'(?<=(\s\s))\S', line)]
-        #         #print(starts, line)
+        #print("final lines")
+        final_lines=""
+        for line_i, line in enumerate(output, 1):
+            if line_i not in lines_removed:
+              final_lines+=line
+        return final_lines
+                #print(starts, line)
     def extract_text(self):
-        final_output=[]
+        final_output=""
         for page in range(1,self.no_pages+1):
             self.pgno=page
             command  = ['pdftotext', '-f', str(page), '-l', str(page), '-layout', self.pdf_file, '-']
             output   = subprocess.check_output(command).decode('utf8')
-            final_output.append(self.main(self.f1(output)))
+            first_column, second_column=self.break_into_pages(output)
+            print(first_column, second_column )
+            if first_column:
+              final_output+=self.main(self.f1(first_column))
+            if second_column:
+              final_output+=self.main(self.f1(second_column))
         return final_output
 
 if __name__ == '__main__':
-    #pdf=\
-    #'Wealth Management- Relevant Documents/Industry Reports/pwc-asset-management-2020-a-brave-new-world-final.pdf'
-    pdf='/home/pratyush1999/Documents/btp/Wealth Management- Relevant Documents/Industry Reports/Deloitte Investment Management Outlook.pdf'
+    pdf='/home/pratyush1999/Documents/btp/Wealth Management- Relevant Documents/Product Documents/HDFC Arbitrage Fund.pdf'
     pdftotxt_extract=Pdftotxt_extract(pdf)
     print(pdftotxt_extract.extract_text())
