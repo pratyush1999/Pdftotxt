@@ -164,8 +164,8 @@ class Pdftotxt_extract(object):
         	if len(lines_for_tables[i][0])==1:
         		i+=1
         		continue
-        	# print('--------------------------------------------------------------------------')
-        	# print("table starts")
+        	print('--------------------------------------------------------------------------')
+        	print("table starts")
         	f=0
         	while j<len(lines_for_tables) and (self.check(lines_for_tables[j][0], lines_for_tables[i][0]) or\
              self.check(lines_for_tables[i][0], lines_for_tables[j][0]) or self.check(lines_for_tables[j][0], lines_for_tables[j-1][0]) or \
@@ -174,7 +174,7 @@ class Pdftotxt_extract(object):
         		if len(lines_for_tables[j][0])==1 and lines_for_tables[j][0][0]<=10 and lines_for_tables[j][2][0]-lines_for_tables[j][0][0]>=0.6*maxx:
         			f=1
         			break
-        		#print(lines_for_tables[j][1])
+        		print(lines_for_tables[j][1])
         		j+=1;lines_removed.append(lines_for_tables[j-1][3])
         	if j==i+1 and f==0:
         		i1=i
@@ -183,10 +183,10 @@ class Pdftotxt_extract(object):
                or self.check(lines_for_tables[j][0], lines_for_tables[j-2][0]) or self.check(lines_for_tables[j-2][0], lines_for_tables[j][0])) :
         		if len(lines_for_tables[j][0])==1 and lines_for_tables[j][0][0]<=10 and lines_for_tables[j][2][0]-lines_for_tables[j][0][0]>=0.6*maxx:
         			break
-        	#	print(lines_for_tables[j][1])
+        		print(lines_for_tables[j][1])
         		j+=1;lines_removed.append(lines_for_tables[j-1][3])
-        	# print('--------------------------------------------------------------------------')
-        	# print("table ends")
+        	print('--------------------------------------------------------------------------')
+        	print("table ends")
         	i=j
  
         final_lines=""
@@ -238,8 +238,8 @@ class Pdftotxt_extract(object):
 if __name__ == '__main__':
     pdf='/home/pratyush1999/Documents/btp/large.pdf'
     pdftotxt_extract=Pdftotxt_extract(pdf)
-    #pdftotxt_extract.extract_text()
-    print(pdftotxt_extract.extract_text())
+    pdftotxt_extract.extract_text()
+    #print(pdftotxt_extract.extract_text())
     #print("{\"content\":\"", pdftotxt_extract.extract_text(), "\"}")
     # command  = ['curl', '-i', '-X', 'POST', 'http://10.4.24.5:8004/library_summary', '-d',  pdftotxt_extract.extract_text()]
     # output   = subprocess.check_output(command).decode('utf8')
