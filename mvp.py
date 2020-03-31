@@ -4,7 +4,7 @@ from copy import deepcopy
 import os
 import subprocess
 # import fitz
-
+from test import Pdf_get_pages
 
 class Pdftotxt_extract(object):
 
@@ -15,7 +15,8 @@ class Pdftotxt_extract(object):
         self.pgno=0
     def f1(self, foo): 
         return foo.splitlines()
-    
+    def remove_non_ascii(self, line):
+        return ''.join([i if ord(i) < 128 else ' ' for i in line])
     def findOccurrences(self, s, ch):
         return [i for i, letter in enumerate(s) if letter == ch]
     def first_word(self,s1):
@@ -119,8 +120,8 @@ class Pdftotxt_extract(object):
             	continue
             if len(starts)==1 and ends[0]-starts[0]<=2:
              	pass
-            else:
-            	lines_for_tables.append([copy.deepcopy(starts), line, copy.deepcopy(ends), line_i])       	
+            elif len(starts)>=2:
+            	lines_for_tables.append([copy.deepcopy(starts), line, copy.deepcopy(ends), line_i])      	
 
         
             if len(starts)==1 and starts[0]>60:
@@ -164,8 +165,8 @@ class Pdftotxt_extract(object):
         	if len(lines_for_tables[i][0])==1:
         		i+=1
         		continue
-        	print('--------------------------------------------------------------------------')
-        	print("table starts")
+        	#print('--------------------------------------------------------------------------')
+        	#print("table starts")
         	f=0
         	while j<len(lines_for_tables) and (self.check(lines_for_tables[j][0], lines_for_tables[i][0]) or\
              self.check(lines_for_tables[i][0], lines_for_tables[j][0]) or self.check(lines_for_tables[j][0], lines_for_tables[j-1][0]) or \
@@ -174,7 +175,7 @@ class Pdftotxt_extract(object):
         		if len(lines_for_tables[j][0])==1 and lines_for_tables[j][0][0]<=10 and lines_for_tables[j][2][0]-lines_for_tables[j][0][0]>=0.6*maxx:
         			f=1
         			break
-        		print(lines_for_tables[j][1])
+        		#print(lines_for_tables[j][1])
         		j+=1;lines_removed.append(lines_for_tables[j-1][3])
         	if j==i+1 and f==0:
         		i1=i
@@ -183,63 +184,72 @@ class Pdftotxt_extract(object):
                or self.check(lines_for_tables[j][0], lines_for_tables[j-2][0]) or self.check(lines_for_tables[j-2][0], lines_for_tables[j][0])) :
         		if len(lines_for_tables[j][0])==1 and lines_for_tables[j][0][0]<=10 and lines_for_tables[j][2][0]-lines_for_tables[j][0][0]>=0.6*maxx:
         			break
-        		print(lines_for_tables[j][1])
+        		#print(lines_for_tables[j][1])
         		j+=1;lines_removed.append(lines_for_tables[j-1][3])
-        	print('--------------------------------------------------------------------------')
-        	print("table ends")
+        	#print('--------------------------------------------------------------------------')
+        	#print("table ends")
         	i=j
  
         final_lines=""
         line_hyphen=1
         # start_words=['The', 'These', 'It', 'A', 'An', 'For', 'To', 'Where', 'Anyone', '']
+        bullets=['-']
         for line_i, line in enumerate(output, 1):
-            if line_i not in lines_removed and not line.isupper():
+            if line_i not in lines_removed and not line.isupper():  #add upper case lines as well to the output. so edit this line later
                 line = re.sub(r'\uf0b7','',line)
                 line = re.sub(r'\u2212','-',line)
                 line = re.sub(r'\u2019','',line)
+                line = re.sub(r'\u2022','-',line)
                 line = re.sub(r'\u2018','',line)
+                line = re.sub(r'\u2013',':',line)
+                line = re.sub(r'\u260e"','',line)
                 line = re.sub(r';','.',line)
                 line = re.sub(r'\'','',line)
                 line = re.sub(r'\"','',line)
+
+                line=line.lstrip()
                 if len(line)>=2 and line[0].isalpha() and line[1]==')':
                     line=line[0]+'.'+line[2:]
-                if line and line[0]=='-':
+                if line and line[0] in bullets:
                     line=str(line_hyphen)+'.'+line[1:]
                     line_hyphen+=1
-                elif line and line_i+1<len(all_lines) and (len(line)<=2 or line[-2] in line_end )and all_lines[line_i+1][0]!='-':
+                elif line and line_i+1<len(all_lines) and (len(line)<=2 or line[-2] in line_end )and all_lines[line_i+1][0] not in bullets:
                     line_hyphen=1
                 line=line.rstrip()# or  re.findall(r'^\s*[A-Z]', all_lines[line_i+1])
-             #   if line_i+1<len(all_lines) and (re.findall(r'^\s*[A-Z]', all_lines[line_i+1]) )    and (line[-1] not in line_end):
+                if line_i+1<len(all_lines) and (re.findall(r'^\s*[A-Z]', all_lines[line_i+1]) )    and (line[-1] not in line_end) and len(line)>=len(all_lines[line_i+1])-10:
                     # print('---------------')
                 #     print(line)
                 #     # print(all_lines[line_i+1])
                 #   #  print(self.first_word(all_lines[line_i+1]))
                 #     # print('-------------------')
-                #     line+="."
+                     line+="."
                 # print('--------')
-                # if line_i+1<len(all_lines) and (re.findall(r'^\s*[\(]?\w+[\.\)](?=\s)', all_lines[line_i+1])  )    and (line[-1] not in line_end):
-                #     line+="."
-
-                line = re.sub(r'\u2013',':',line)
+                if line_i+1<len(all_lines) and (re.findall(r'^\s*[\(]?\w+[\.\)](?=\s)', all_lines[line_i+1])  )    and (line[-1] not in line_end):
+                     line+="."
+                #line=re.sub(r'[\x00-\x7F]',' ', line)
+                # line=self.remove_non_ascii(line)
                 final_lines+=line
                 final_lines+=' '
                 final_lines+='\n'
+            # else:
+            #     print(line)
         return final_lines
     def extract_text(self):
-        final_output=""
+        pdftotxt_extract=Pdf_get_pages(pdf)
+        output=pdftotxt_extract.extract_text()
         # for page in range(1,self.no_pages+1):
         #     self.pgno=page
-        command  = ['pdftotext', '-layout', self.pdf_file, '-']
-        output   = subprocess.check_output(command).decode('utf8')
-        final_output+=self.main(self.f1(self.main(self.f1(output))))
+        # command  = ['pdftotext', '-layout', self.pdf_file, '-']
+        # output   = subprocess.check_output(command).decode('utf8')
+        final_output=self.main(self.f1(self.main(self.f1(output))))
         # final_output+='\n'
         return final_output
 
 if __name__ == '__main__':
-    pdf='/home/pratyush1999/Documents/btp/large.pdf'
+    pdf='/home/pratyush1999/Documents/btp/Wealth Management- Relevant Documents/Industry Reports/pwc-asset-management-2020-a-brave-new-world-final.pdf'
     pdftotxt_extract=Pdftotxt_extract(pdf)
-    pdftotxt_extract.extract_text()
-    #print(pdftotxt_extract.extract_text())
+    #pdftotxt_extract.extract_text()
+    print(pdftotxt_extract.extract_text())
     #print("{\"content\":\"", pdftotxt_extract.extract_text(), "\"}")
     # command  = ['curl', '-i', '-X', 'POST', 'http://10.4.24.5:8004/library_summary', '-d',  pdftotxt_extract.extract_text()]
     # output   = subprocess.check_output(command).decode('utf8')

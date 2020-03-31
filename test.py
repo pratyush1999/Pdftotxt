@@ -4,20 +4,15 @@ import copy
 from copy import deepcopy
 import os
 import subprocess
-import PyPDF2 
-# text = re.sub(r'\n\w+[.]?\n','',text) # for removing page numbers and serial numbers(can be alphabets as well)
-# text = re.sub(r'[\w\s]+\n{2,}','',text)  #for removing  headings
-# text = re.sub(r'\n{2,}[\w\s]','',text)  #for removing  headings u can remove those lines which contain only 3 words
 
-
-class Pdftotxt_extract(object):
+class Pdf_get_pages(object):
 
     def __init__(self, pdf_file):
         self.pdf_file=pdf_file
         pdfFileObj = open(self.pdf_file, 'rb')
-        pdfReader = PyPDF2.PdfFileReader(pdfFileObj)  
-        self.no_pages=pdfReader.numPages 
-        pdfFileObj.close() 
+        ps = subprocess.Popen(('pdfinfo', self.pdf_file), stdout=subprocess.PIPE)
+        output = subprocess.check_output(('grep', '-oP', '(?<=Pages:          )[ A-Za-z0-9]*'), stdin=ps.stdout)
+        self.no_pages   = int(output)
         self.pgno=0
     def f1(self, foo): 
         return foo.splitlines()
@@ -155,7 +150,7 @@ class Pdftotxt_extract(object):
             # if self.pgno==10 and line_i==5:
             #     print("this line:::", split_wspce, line[:split_wspce], w_spce[52], total_lines)
             if split_wspce<len(line)-1 and line[split_wspce]==' ' and line[split_wspce+1]==' ':
-                if re.search(r'\w', line[:split_wspce]):
+                if re.search(r'\w', line[:split_wspce]) or 1:
                     if line_i-prev>=2:
                         return 0
                     prev=line_i
@@ -165,7 +160,7 @@ class Pdftotxt_extract(object):
                 if line[-1]!='\n':
                     second_column+='\n'
             else:
-                if re.search(r'\w', line):
+                if re.search(r'\w', line) or 1:
                     if line_i-prev>=2:
                         return 0
                     prev=line_i
@@ -281,10 +276,10 @@ class Pdftotxt_extract(object):
                       min(right_w_spce[Keymax],left_w_spce[Keymax])>=3*max(right_w_spce[Keymax], left_w_spce[Keymax])/4\
                       or min(left_w_spce[Keymax], right_w_spce[Keymax])>=100)\
               and right_w_spce[Keymax]>10 and left_w_spce[Keymax]>10:
-                 print("type 1:",self.pgno,"col key:", Keymax, "max length of line in page:",\
-                     maxlnline, "w_spce of key:",w_spce[Keymax], "right_w_spce:", right_w_spce[Keymax],\
-                     "left_w_spce:", left_w_spce[Keymax],"total_lines :", total_lines,
-               "diff bw w_spce and total_lines/total_lines:",100* abs(w_spce[Keymax]-total_lines)/total_lines  )
+               #   print("type 1:",self.pgno,"col key:", Keymax, "max length of line in page:",\
+               #       maxlnline, "w_spce of key:",w_spce[Keymax], "right_w_spce:", right_w_spce[Keymax],\
+               #       "left_w_spce:", left_w_spce[Keymax],"total_lines :", total_lines,
+               # "diff bw w_spce and total_lines/total_lines:",100* abs(w_spce[Keymax]-total_lines)/total_lines  )
                  split_wspce=Keymax
              else:#if right_w_spce[Keymax]>=10 and left_w_spce[Keymax]>=10:
                  dict_list=[]
@@ -298,11 +293,11 @@ class Pdftotxt_extract(object):
                       or min(left_w_spce[key], right_w_spce[key])>=100)\
                      and right_w_spce[key]>10 and left_w_spce[key]>10:
                          split_wspce=key
-                         print("type 2:",self.pgno,"white space col key:", key, "max length of line in page:",\
-                         maxlnline, "w_spce of key:",w_spce[key], "right_w_spce:", right_w_spce[key],\
-                         "left_w_spce:", left_w_spce[key],"total_lines :" , total_lines, "right_w_spce of keymax:", right_w_spce[Keymax],\
-                     "left_w_spce of keymax:", left_w_spce[Keymax],
-                   "diff bw w_spce and total_lines/total_lines:",100* abs(w_spce[Keymax]-total_lines)/total_lines)
+                   #       print("type 2:",self.pgno,"white space col key:", key, "max length of line in page:",\
+                   #       maxlnline, "w_spce of key:",w_spce[key], "right_w_spce:", right_w_spce[key],\
+                   #       "left_w_spce:", left_w_spce[key],"total_lines :" , total_lines, "right_w_spce of keymax:", right_w_spce[Keymax],\
+                   #   "left_w_spce of keymax:", left_w_spce[Keymax],
+                   # "diff bw w_spce and total_lines/total_lines:",100* abs(w_spce[Keymax]-total_lines)/total_lines)
                          break
                      elif val>=w_spce[Keymax]-15 and abs(key-int(maxlnline/2))<=int(maxlnline/5)\
                      and(\
@@ -310,11 +305,11 @@ class Pdftotxt_extract(object):
                       or min(left_w_spce[key], right_w_spce[key])>=100)\
                      and right_w_spce[key]>10 and left_w_spce[key]>10:
                          split_wspce=key
-                         print("type 3:",self.pgno,"white space col key:", key, "max length of line in page:",\
-                         maxlnline, "w_spce of key:",w_spce[key], "right_w_spce:", right_w_spce[key],\
-                         "left_w_spce:", left_w_spce[key],"total_lines :" , total_lines, "right_w_spce of keymax:", right_w_spce[Keymax],\
-                     "left_w_spce of keymax:", left_w_spce[Keymax],
-                   "diff bw w_spce and total_lines/total_lines:",100* abs(w_spce[Keymax]-total_lines)/total_lines)
+                   #       print("type 3:",self.pgno,"white space col key:", key, "max length of line in page:",\
+                   #       maxlnline, "w_spce of key:",w_spce[key], "right_w_spce:", right_w_spce[key],\
+                   #       "left_w_spce:", left_w_spce[key],"total_lines :" , total_lines, "right_w_spce of keymax:", right_w_spce[Keymax],\
+                   #   "left_w_spce of keymax:", left_w_spce[Keymax],
+                   # "diff bw w_spce and total_lines/total_lines:",100* abs(w_spce[Keymax]-total_lines)/total_lines)
                          break
         first_column=""
         second_column=""
@@ -362,25 +357,22 @@ class Pdftotxt_extract(object):
             output   = subprocess.check_output(command).decode('utf8')
             first_column, second_column=self.main(self.f1(output))
             if first_column:
-              first_first_column, first_second_column=self.main(self.f1(first_column))              
-            third_column=""
+              first_first_column, first_second_column=self.main(self.f1(first_column))
+              final_output+=first_first_column
+              final_output+='\n\n'
+              final_output+=first_second_column
+              final_output+='\n\n'
             if second_column:
               second_column, third_column=self.main(self.f1(second_column))
-            print("pg starts:",self.pgno)
-            print('------------------------------------------------------------------------------------------')
-            print(first_first_column)
-            print('------------------------------------------------------------------------------------------')
-            print(first_second_column)
-            print('------------------------------------------------------------------------------------------')
-            print(second_column)            
-            print('------------------------------------------------------------------------------------------')
-            print(third_column)            
-            print("pg ends:",self.pgno)        # #print("removed lines")
+              final_output+=second_column            
+              final_output+='\n\n'
+              final_output+=third_column           
+              final_output+='\n\n'
             # final_output+=self.main(self.f1(output),2)
         return final_output
 
 if __name__ == '__main__':
-    pdf='/home/pratyush1999/Documents/btp/Wealth Management- Relevant Documents/Product Documents/HDFC Arbitrage Fund.pdf'
-    pdftotxt_extract=Pdftotxt_extract(pdf)
-    # print(pdftotxt_extract.extract_text())
-    pdftotxt_extract.extract_text()
+    pdf='/home/pratyush1999/Documents/btp/Wealth Management- Relevant Documents/Industry Reports/pwc-asset-management-2020-a-brave-new-world-final.pdf'
+    pdftotxt_extract=Pdf_get_pages(pdf)
+    print(pdftotxt_extract.extract_text())
+    # pdftotxt_extract.extract_text()
