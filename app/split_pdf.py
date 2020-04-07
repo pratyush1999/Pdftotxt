@@ -15,12 +15,8 @@ class Pdf_get_pages(object):
         self.no_pages = int(subprocess.check_output(('grep', '-oP', '(?<=Pages:          )[ A-Za-z0-9]*'), stdin=ps.stdout))
         self.pgno=0
         self.output=""
-    def f1(self, foo): 
-        return foo.splitlines()
-    
-    def findOccurrences(self, s, ch):
-        return [i for i, letter in enumerate(s) if letter == ch]
-
+        self.all_starts=[]
+        self.all_ends=[]
     def check(self, a1, b1, f=0):
     	a=copy.deepcopy(a1)
     	b=copy.deepcopy(b1)
@@ -32,49 +28,6 @@ class Pdf_get_pages(object):
     	    if max(i,j)-min(i,j)>5+f:
     	    	return False
     	return True
-    def basic_cleaning(self, line):
-        """ does basic cleaning of line"""
-        line+='\n'
-        line = re.sub(r':','',line)
-        line = re.sub(r'\u2212','-',line)   
-        return line     
-    def start_pos(self, line_i):
-        """ returns starts of a line """
-        line_hyphen=1
-        line=self.output[line_i]
-        line+='\n'
-        line = re.sub(r':','',line)
-        line = re.sub(r'\u2212','-',line)
-        if line[0]=='-':
-            line=str(line_hyphen)+'.'+line[1:]
-        f=0
-        prev_temp_line=copy.deepcopy(line)
-        line=re.sub(r'^\s*[\(]?\w+[\.\)](?=\s)','', line) #for removing line numbers. 
-        if prev_temp_line!=line:
-            f=5                                                    #if this creates problems, include a flag in self.check function to take 3 more characters if this pattern comes in the current line
-        starts=[m.start(0) for m in re.finditer(r'(?<=(\s\s))\S', line)]
-        ends=[m.start(0) for m in re.finditer(r'\S(?=((\s\s)|\n))', line)]
-        if re.search(r'\S', line[0:2]):
-            starts.insert(0,0) 
-        if  starts and ends and  ends[0]-starts[0]<=2:
-            del starts[0]
-        return starts
-    def empty_flag(self, line_i):
-        """ returns a binary variable signifying if a line is empty"""
-        line_hyphen=1
-        line_i-=1
-        if line_i<0 or line_i>=len(self.output):
-          return 0
-        starts=self.start_pos(line_i)
-        if len(starts)<1:
-            return 1
-        return 0
-    def get_last_line(self):
-        """ returns the last line of a corpus of text"""
-        i=len(self.output)
-        while i>=0 and self.empty_flag(i):
-          i-=1
-        return i
     def clean(self, first_split=0):
         """ this method cleans the text """
         one_lines=[]
@@ -82,11 +35,36 @@ class Pdf_get_pages(object):
         lines_for_tables=[]
         total_lines=0
         w_spce={}
-      #  empty_flag=[]
-        #empty_flag.append(0)
         line_hyphen=1
         line_end=[':',',','.',';']
-        last_line=self.get_last_line()
+        all_starts=[]
+        all_ends=[]
+        empty_flag=[]
+        last_line=-1
+        empty_flag.append(0)
+        for line_i, line in enumerate(self.output, 1):
+            line+='\n'
+            line = re.sub(r':','',line)
+            line = re.sub(r'\u2212','-',line)
+            if line[0]=='-':
+                line=str(line_hyphen)+'.'+line[1:]
+                line_hyphen+=1
+            line=re.sub(r'^\s*[\(]?\w+[\.\)](?=\s)','', line) #for removing line numbers. 
+            starts=[m.start(0) for m in re.finditer(r'(?<=(\s\s))\S', line)]
+            ends=[m.start(0) for m in re.finditer(r'\S(?=((\s\s)|\n))', line)]
+            if re.search(r'\S', line[0:2]):
+                starts.insert(0,0) 
+            if  starts and ends and  ends[0]-starts[0]<=2:
+                del starts[0]
+                del ends[0]
+            all_starts.append(starts)
+            all_ends.append(ends)
+            if len(starts)<1:
+                empty_flag.append(1)
+                continue
+            empty_flag.append(0)
+            last_line=line_i
+        empty_flag.append(1)
         last_empty_line=-1
         maxlnline=0
         for line_i, line in enumerate(self.output, 1):
@@ -100,13 +78,8 @@ class Pdf_get_pages(object):
             line+='\n'
             line = re.sub(r':','',line)
             line=re.sub(r'^\s*[\(]?\w+[\.\)](?=\s)','', line) #for removing line numbers. 
-            starts=[m.start(0) for m in re.finditer(r'(?<=(\s\s))\S', line)]
-            ends=[m.start(0) for m in re.finditer(r'\S(?=((\s\s)|\n))', line)]
-            if re.search(r'\S', line[0:2]):
-                starts.insert(0,0) 
-            if  starts and ends and  ends[0]-starts[0]<=2:
-                del starts[0]
-                del ends[0]
+            starts=all_starts[line_i-1]
+            ends=all_ends[line_i-1]
          #   print("this line starts:",line, starts,"this line ends")
 
             if len(starts)<1:
@@ -114,25 +87,26 @@ class Pdf_get_pages(object):
               lines_removed[line_i-1]=1
               continue
 
-            if (len(starts)==1) and (line_i<len(self.output) and len(self.start_pos(line_i))==1 ) and ( (self.empty_flag(line_i-1)==1\
-                 and self.empty_flag(line_i-2)==1 and self.empty_flag(line_i+2)==1) or   \
-               (self.empty_flag(line_i-1)==1 and self.empty_flag(line_i+2)==1 and self.empty_flag(line_i+3)==1) ):
+            if line_i>=2 and line_i+3<len(empty_flag) and (len(starts)==1)and len(all_starts[line_i])==1 and ( (empty_flag[line_i-1]==1\
+                 and empty_flag[line_i-2]==1 and empty_flag[line_i+2]==1) or   \
+               (empty_flag[line_i-1]==1 and empty_flag[line_i+2]==1 and empty_flag[line_i+3]==1) ):
                 lines_removed[line_i-1]=1
                 lines_removed[line_i]=1
 
-            if  len(starts)==1 and ( (self.empty_flag(line_i-1)==1 and self.empty_flag(line_i-2)==1 and   \
-                self.empty_flag(line_i+1)==1) or(self.empty_flag(line_i-1)==1 and self.empty_flag(line_i+1)==1 and self.empty_flag(line_i+2)==1) ):
+            if line_i>=2 and line_i+2<len(empty_flag) and len(starts)==1 and ( (empty_flag[line_i-1]==1 and empty_flag[line_i-2]==1 and   \
+                empty_flag[line_i+1]==1) or( empty_flag[line_i-1]==1 and empty_flag[line_i+1]==1 and empty_flag[line_i+2]==1) ):
                 lines_removed[line_i-1]=1
             if line_i==last_line:
                num_empty=1
-               if last_empty_line>=1 and num_empty<=2 and self.empty_flag(last_empty_line-1)==1:
+               if last_empty_line>=1 and num_empty<=2 and empty_flag[last_empty_line-1]==1:
                   num_empty+=1
              #  print('pratyush1999', "pgno:", self.pgno, "last_empty_line:", last_empty_line, "line_i:", line_i,"num_empty:", num_empty, "empty_flag[last_empty_line]:",empty_flag[last_empty_line])
                if num_empty>=2 and last_empty_line!=-1 and first_split==1:
                  for i in range(last_empty_line+1,line_i+1,1):
                     #print("pratyush1999", "pgno:", self.pgno, all_lines[i])
                     lines_removed[i-1]=1
-
+        self.all_starts=all_starts
+        self.all_ends=all_ends
         return lines_removed, maxlnline   
     def check_split(self, split_wspce, lines_removed_preprocess):
         first_column=""
@@ -214,29 +188,16 @@ class Pdf_get_pages(object):
                     left_w_spce[i]+=len(re.findall(r'\S(?=(\s))', line[:i]))
             total_lines+=1
             line = re.sub(r':','',line)
-            f=0
-            prev_temp_line=copy.deepcopy(line)
             line=re.sub(r'^\s*[\(]?\w+[\.\)](?=\s)','', line) #for removing line numbers. 
-            if prev_temp_line!=line:
-                f=5                                                    #if this creates problems, include a flag in self.check function to take 3 more characters if this pattern comes in the current line
-            str_curr=''.join(line)
-            starts=[m.start(0) for m in re.finditer(r'(?<=(\s\s))\S', line)]
-            ends=[m.start(0) for m in re.finditer(r'\S(?=((\s\s)|\n))', line)]
-            if re.search(r'\S', line[0:2]):
-                starts.insert(0,0) 
-            if  starts and ends and  ends[0]-starts[0]<=2:
-                del starts[0]
-                del ends[0]
-
+            starts=self.all_starts[line_i-1]
+            ends=self.all_ends[line_i-1]
             if len(starts)<1:
             	continue
             if len(starts)==1 and ends[0]-starts[0]<=2:
              	pass
             else:
-            	lines_for_tables.append([copy.deepcopy(starts), line, copy.deepcopy(ends), line_i])       	
+            	lines_for_tables.append([starts, line, ends, line_i])       	
 
-            if len(starts)==1 and starts[0]>60:
-             	one_lines.append([starts[0], line_i, str_curr])       
         # if self.pgno==5:
         #     print(w_spce,maxlnline, max(w_spce, key=w_spce.get), w_spce[max(w_spce, key=w_spce.get)])
         #     print(right_w_spce[62], left_w_spce[62])
@@ -387,9 +348,10 @@ class Pdf_get_pages(object):
             command  = ['pdftotext', '-f', str(page), '-l', str(page), '-layout', self.pdf_file, '-']
             output   = subprocess.check_output(command).decode('utf8')
             #print(self.output)
-            first_column, second_column, _, _=self.main(self.f1(output), 1)
+           # output=re.sub(r':','',output)
+            first_column, second_column, _, _=self.main(output.splitlines(), 1)
             if first_column:
-              first_first_column, first_second_column, pg1, pg2=self.main(self.f1(first_column), 0)
+              first_first_column, first_second_column, pg1, pg2=self.main(first_column.splitlines(), 0)
               final_output+=first_first_column
               pg_ends+=pg1
               pg_ends+=pg2
@@ -399,7 +361,7 @@ class Pdf_get_pages(object):
               final_output+=first_second_column
 #              final_self.output+='\n'
             if second_column:
-              second_column, third_column,pg1,pg2=self.main(self.f1(second_column), 0)
+              second_column, third_column,pg1,pg2=self.main(second_column.splitlines(), 0)
               final_output+=second_column     
               pg_ends+=pg1
               pg_ends+=pg2
