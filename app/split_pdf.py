@@ -101,9 +101,9 @@ class Pdf_get_pages(object):
                if last_empty_line>=1 and num_empty<=2 and empty_flag[last_empty_line-1]==1:
                   num_empty+=1
              #  print('pratyush1999', "pgno:", self.pgno, "last_empty_line:", last_empty_line, "line_i:", line_i,"num_empty:", num_empty, "empty_flag[last_empty_line]:",empty_flag[last_empty_line])
-               if num_empty>=2 and last_empty_line!=-1 and first_split==1:
+               if num_empty>=2 and last_empty_line!=-1 and first_split==1 and line_i-last_empty_line<=12:
                  for i in range(last_empty_line+1,line_i+1,1):
-                    #print("pratyush1999", "pgno:", self.pgno, all_lines[i])
+                   # print("pratyush1999", "pgno:", self.pgno, self.output[i-1])
                     lines_removed[i-1]=1
         self.all_starts=all_starts
         self.all_ends=all_ends
@@ -277,7 +277,7 @@ class Pdf_get_pages(object):
               if line_i==len(self.output): #:and line[-1] not in line_end:
                   #print(line)
                   line+='.'
-
+              #line=re.sub(r'(?<=[a-zA-Z])[0-9]+\s',' ', line)
               # if self.pgno==10 and line_i==5:
               #     print("this line:::", split_wspce, line[:split_wspce], w_spce[52], total_lines)
               if split_wspce<len(line)-1 and line[split_wspce]==' ' and line[split_wspce+1]==' ':
@@ -373,7 +373,7 @@ class Pdf_get_pages(object):
         return final_output, pg_ends#.encode('utf8')
 
 if __name__ == '__main__':
-    pdf='/home/pratyush1999/Documents/btp/Wealth Management- Relevant Documents/Industry Reports/pwc-asset-management-2020-a-brave-new-world-final.pdf'
+    pdf='/home/pratyush1999/Documents/btp/digitalee/src/pdf_to_txt/app/PDFs/Original PDFs/Regtech in Financial Services.pdf'
     pdftotxt_extract=Pdf_get_pages(pdf)
     #print(pdftotxt_extract.extract_text())
     ret,_ =pdftotxt_extract.extract_text()

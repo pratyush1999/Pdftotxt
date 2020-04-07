@@ -72,29 +72,30 @@ class Pdftotxt_extract(object):
                 del ends[0]
             all_starts.append(starts)
             all_ends.append(ends)
+           # print("debug:",all_starts[line_i-1], line)# lines_removed[line_i])
             if len(starts)<1:
                 #print(line)
-                empty_flag.append(1)
+                empty_flag.append(1); 
                 continue
             empty_flag.append(0)
         empty_flag.append(1)
+        #print("true or not:", len(all_starts)==len(output))
         for line_i, line in enumerate(output, 1):
-            if line_i not in lines_removed:
-                lines_removed[line_i]=0
             line+='\n'
             line = re.sub(r':','',line)
             f=0
    #         prev_temp_line=copy.deepcopy(line)
             line=re.sub(r'^\s*[\(]?\w+[\.\)](?=\s)','', line) #for removing line numbers. 
             # if prev_temp_line!=line:
-            #     f=5                                                    #if this creates problems, include a flag in self.check function to take 3 more characters if this pattern comes in the current line
+            #     f=5   
             starts=all_starts[line_i-1]#stores the index of first character of each segment separated by >=2 space character)
             ends=all_ends[line_i-1]#stores the index of last character of each segment separated by >=2 space character)
          #   print("this line starts:",line, starts,"this line ends")
             if ends:
             	maxx=max(maxx, max(ends))
-            if len(starts)<1:
-            	lines_removed[line_i]=1
+            if len(starts)<1 :
+                #print(line_i)
+            	lines_removed[line_i]=20
             	continue
             if len(starts)==1 and ends[0]-starts[0]<=2:
              	pass
@@ -105,15 +106,16 @@ class Pdftotxt_extract(object):
                (empty_flag[line_i-1]==1 and empty_flag[line_i+2]==1 and empty_flag[line_i+3]==1) ):
                 #print('type0', line, empty_flag[line_i-1]==1 and empty_flag[line_i+2]==1 and empty_flag[line_i+3]==1, all_lines[line_i+3])
                 if pg_ends and  pg_ends[line_i-1]==0 and pg_ends[line_i]==0:
-                    lines_removed[line_i]=1   
-                    lines_removed[line_i+1]=1  #for hadling image caption
-
+                    lines_removed[line_i]=3   
+                    lines_removed[line_i+1]=3  #for hadling image caption
+                #print('type2', line_i)
             if line_i>=2 and line_i+2<len(empty_flag) and len(starts)==1 and ( (empty_flag[line_i-1]==1 and empty_flag[line_i-2]==1 and   \
                 empty_flag[line_i+1]==1) or( empty_flag[line_i-1]==1 and empty_flag[line_i+1]==1 and empty_flag[line_i+2]==1) ):
-               # print('type1', line)
+                #print('type1', line)
                 if pg_ends and pg_ends and pg_ends[line_i-1]==0:
-                    lines_removed[line_i]=1     #for hadling image caption
-           
+                    lines_removed[line_i]=4     #for hadling image caption
+           # print(all_starts[line_i-1] , line)                                                 #if this creates problems, include a flag in self.check function to take 3 more characters if this pattern comes in the current line
+  
         #table detection method
         i=1
         while i<len(lines_for_tables):
@@ -132,7 +134,7 @@ class Pdftotxt_extract(object):
         			f=1
         			break
         		#print(lines_for_tables[j][1])
-        		j+=1;lines_removed[lines_for_tables[j-1][3]]=1
+        		j+=1;lines_removed[lines_for_tables[j-1][3]]=5
         	if j==i+1 and f==0:
         		i1=i
         		i=j  
@@ -141,7 +143,7 @@ class Pdftotxt_extract(object):
         		if len(lines_for_tables[j][0])==1 and lines_for_tables[j][0][0]<=10 and lines_for_tables[j][2][0]-lines_for_tables[j][0][0]>=0.6*maxx:
         			break
         		#print(lines_for_tables[j][1])
-        		j+=1;lines_removed[lines_for_tables[j-1][3]]=1
+        		j+=1;lines_removed[lines_for_tables[j-1][3]]=6
         	#print('--------------------------------------------------------------------------')
         	#print("table ends")
         	i=j
@@ -150,22 +152,28 @@ class Pdftotxt_extract(object):
         line_hyphen=1
         bullets=['-']
         last_line=""
+   #     for line_i, line in enumerate(output, 1):
+            #if line_i in lines_removed:
         for line_i, line in enumerate(output, 1):
-            if lines_removed[line_i]==0:
+           # print(line_i, line)
+            line=re.sub(r'(?<=[0-9])\s','.', line)
+            if line_i not in lines_removed:
                 if pg_ends:
                     pg_ends_ret.append(pg_ends[line_i-1])
                 if line.isupper() or (not re.search(r'[a-zA-Z]',line)):  #add upper case lines as well to the output.
                     line+='.'
                 line = re.sub(r'\u2013',':',line)
                 line = re.sub(r';','.',line)
-                line = re.sub(r'\'','',line)
-                line = re.sub(r'\"','',line)
                 #code for adding full stop at end of unpunctuated lines
                 line=line.lstrip()
                 if len(line)>=2 and line[0].isalpha() and line[1]==')':
                     line=line[0]+'.'+line[2:]
-                if line and line[0] in bullets:
-                    line=str(line_hyphen)+'.'+line[1:]
+                if line and line[0]=='-':
+                    #print(line)
+                    next_ind=1
+                    if len(line)>=2 and line[1]=='-':
+                        next_ind=2
+                    line=str(line_hyphen)+'.'+line[next_ind:]
                     line_hyphen+=1
                 elif line and line_i<len(output) and (len(line)<=2 or line[-2] in line_end )and self.basic_cleaning(output[line_i]) not in bullets:
                     line_hyphen=1
@@ -179,6 +187,8 @@ class Pdftotxt_extract(object):
                 final_lines+=' '
                 final_lines+='\n'
                 last_line=line
+            # else:
+            #     print(line_i, lines_removed[line_i], line, all_starts[line_i-1], all_ends[line_i-1])
         return final_lines, pg_ends_ret
     def extract_text(self):
         pdftotxt_extract=Pdf_get_pages(self.pdf_file)
@@ -190,11 +200,14 @@ class Pdftotxt_extract(object):
         output = re.sub(r'\u2022','-', output)
         final_output, pg_ends=self.main(output.splitlines(), pg_ends)
         final_output, _=self.main(final_output.splitlines(), pg_ends)#.encode('utf8')
-        final_output=re.sub(r'\.+','.',final_output)
+        final_output=re.sub(r'\.[0-9]+\.','.', final_output)
+        final_output=re.sub(r' \. ','   ', final_output)
+        final_output = re.sub(r'\'','', final_output)
+        final_output = re.sub(r'\"','', final_output)
         return final_output#.encode('utf8')
 
 if __name__ == '__main__':
-    pdf='/home/pratyush1999/Documents/btp/Wealth Management- Relevant Documents/Original PDFs/Regtech in Financial Services.pdf'
+    pdf='/home/pratyush1999/Documents/btp/Wealth Management- Relevant Documents/working_docs/Tech and Wealth Management.pdf'
     pdftotxt_extract=Pdftotxt_extract(pdf)
     #pdftotxt_extract.extract_text()
    # print(pdftotxt_extract.extract_text())
