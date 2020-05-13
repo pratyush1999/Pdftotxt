@@ -1,3 +1,0 @@
-PyMuPDF==1.16.11
-pdftotext==2.1.4
-
