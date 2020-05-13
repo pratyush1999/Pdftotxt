@@ -1,13 +1,10 @@
-""" this module splits multi column pages of pdf into separate pages """
+""" Splits multi column pages of pdf into separate pages """
 import re
-import copy
 import subprocess
 import os
 import string
 import multiprocessing
 from joblib import Parallel, delayed
-# from multiprocessing import Pool
-from tqdm import tqdm
 
 
 LOG_ENABLE = os.environ["DEPLOYED"] if "DEPLOYED" in os.environ else ''
@@ -17,9 +14,9 @@ if LOG_ENABLE == "1":
     LOG = Logger(os.getenv('LOGGER_ADDR'))
 
 class PdfGetPages():
-    """ this class makes a pdf page splitter """
+    """ Makes a pdf page splitter """
     def __init__(self, pdf_file):
-        """ this class is for splitting pdf pages """
+        """ For splitting pdf pages """
         self.pdf_file = pdf_file
         self.pgno = 0
         self.output = ""
@@ -28,7 +25,7 @@ class PdfGetPages():
         self.split = 0
 
     def get_no_pages(self):
-        """ returns the number of pages in a pdf"""
+        """ Returns the number of pages in a pdf"""
         try:
             pdf_info = subprocess.Popen(
                 ('pdfinfo', self.pdf_file), stdout=subprocess.PIPE)
@@ -47,7 +44,7 @@ class PdfGetPages():
 
     @classmethod
     def preprocess(self, line, end=0):
-        """ this method finds starts, ends and empty of a line """
+        """ Finds starts, ends and empty of a line """
         line += '\n'
         line = re.sub(r':', '', line)
         if end==0:
@@ -63,13 +60,11 @@ class PdfGetPages():
             del starts[0]
             del ends[0]
         empty = len(starts)<1
-       # print("debug:",all_starts[line_i-1], line)# lines_removed[line_i])
         return starts, ends, empty
 
     def clean(self, first_split=0):
-        """ this method cleans the text """
+        """ method cleans the text """
         lines_removed = {}
-        line_hyphen = 1
         # starts(index of first cha of each segment separated by > = 2 spaces)
         all_starts = []
         # all_ends = []
@@ -77,7 +72,7 @@ class PdfGetPages():
         last_line = -1
         empty.append(0)
         for line_i, line in enumerate(self.output, 1):
-            starts, ends, e = self.preprocess(line, 0)
+            starts, _, e = self.preprocess(line, 0)
             all_starts.append(starts)
             empty.append(e)
             if e==0:
@@ -126,7 +121,7 @@ class PdfGetPages():
         return lines_removed, mxln
 
     def check_split(self, spl_spce, lines_removed_preprocess):
-        """ this method checks if the page can be split """
+        """ checks if the page can be split """
         first_col = ""
         second_col = ""
         prev = 10000
@@ -161,8 +156,9 @@ class PdfGetPages():
                 if len(line) == 0 or line[-1] != '\n':
                     first_col += '\n'
         return 1, first_col, second_col
-
+    @classmethod
     def find_spl_spce(self, l_spce, r_spce, w_spce, mxln):
+        """ Finds the column delimiter space """
         spl_spce = 1000
         if w_spce:
             key_max = max(w_spce, key=w_spce.get)
@@ -177,7 +173,7 @@ class PdfGetPages():
                             or min(l_spce[key_max], r_spce[key_max]) >= 100)\
             and r_spce[key_max] > 10 and l_spce[key_max] > 10:
                 spl_spce = key_max
-            else: 
+            else:
                 dict_list = []
                 for key, val in w_spce.items():
                     dict_list.append([key, val])
@@ -199,11 +195,11 @@ class PdfGetPages():
                                     and r_spce[key] > 10 and l_spce[key] > 10:
                         spl_spce = key
                         break
-        return spl_spce        
+        return spl_spce
     def getcols(self, w_spce, lines_removed_preprocess, spl_spce, mxln):
+        """ Splits text into columns """
         first_col = ""
         second_col = ""
-        entr = 1
         if spl_spce == 1000 and w_spce:
             key_max = max(w_spce, key=w_spce.get)
             for key, val in w_spce.items():
@@ -219,7 +215,7 @@ class PdfGetPages():
                 continue
             if spl_spce < len(line)-1 and line[spl_spce] == ' ' and line[spl_spce+1] == ' ':
                 first_col += line[:spl_spce]
-                first_col += '\n' 
+                first_col += '\n'
                 second_col += line[spl_spce:]
                 if line[-1] != '\n':
                     second_col += '\n'
@@ -231,6 +227,7 @@ class PdfGetPages():
                     first_col += '\n'
         return first_col, second_col
     def find_spce_dicts(self, lines_removed_preprocess, mxln):
+        """ Finds dictionanry of left, right and white space """
         w_spce = {}  # stores the dictoionary of no of lines having whitespace at an index
         l_spce = {}
         r_spce = {}
@@ -268,9 +265,8 @@ class PdfGetPages():
                     l_spce[i] += len(re.findall(r'\S(?=(\s))', line[:i]))
         return l_spce, r_spce, w_spce
     def main(self, output, first_split=0):
-        """ the main function which returns the splitted pdf pages"""
+        """ Returns the splitted pdf pages"""
         self.output = output
-        line_end = [':', ',', '.', ';']
         lines_removed_preprocess, mxln = self.clean(first_split)
         first_page_ends = []
         second_page_ends = []
@@ -295,7 +291,7 @@ class PdfGetPages():
         return first_col, second_col, first_page_ends, second_page_ends
     
     def extract_page(self, page):
-        """ the caller function splits the given page """
+        """ Splits the given page """
         self.get_no_pages()
         final_output = ""
         pg_ends = []
@@ -328,15 +324,15 @@ class PdfGetPages():
             pg_ends += pg1
             pg_ends += pg2
             final_output += third_column
-        return final_output, pg_ends  
+        return final_output, pg_ends
     def extract_text(self):
-        """ this method is the caller function for each page """
+        """ Caller function for each page """
         self.get_no_pages()
         final_output = ""
         pg_ends = []
         num_cores = multiprocessing.cpu_count()
         final_output_list = Parallel(n_jobs=num_cores )(delayed(self.extract_page)(page)
-                                                               for page in range(1, self.no_pages+1)) 
+                                                               for page in range(1, self.no_pages+1))
         for text, pg_end in final_output_list:
             final_output += text
             pg_ends += pg_end
